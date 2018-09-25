@@ -42,3 +42,62 @@ pulse_data = haven::read_sas('./public_pulse_data.sas7bdat') %>%
   mutate(visit = replace(visit, visit == "bl", "00m")) #modify visit variable
 ```
 
+
+## Litters data
+```{r}
+litters_data = 
+  read_csv("./FAS_litters.csv", col_types = "ccddiiii") %>% 
+  janitor::clean_names() %>%
+  separate(group, into = c("dose", "day_of_tx"), sep = 3) %>%
+  mutate(dose = tolower(dose),
+         wt_gain = gd18_weight - gd0_weight) %>%
+  arrange(litter_number)
+```
+
+```{r}
+litters_data %>% 
+  select(litter_number, ends_with("weight")) %>% 
+  gather(key = gd, value = weight, gd0_weight:gd18_weight) %>% 
+  mutate(gd = recode(gd, "gd0_weight" = 0, "gd18_weight" = 18))
+```
+
+
+## Spread
+
+```{r}
+analysis_result = tibble(
+  group = c("treatment", "treatment", "placebo", "placebo"),
+  time = c("pre", "post", "pre", "post"),
+  mean = c(4, 8, 3.5, 4)
+)
+
+analysis_result
+```
+
+Make it readable
+
+```{r}
+analysis_result %>%
+  spread(key = time, value = mean) %>%
+  knitr::kable()
+```
+
+## Join data
+
+```{r}
+pup_data = read_csv("./FAS_pups.csv", col_types = "ciiiii") %>%
+  janitor::clean_names() %>%
+  mutate(sex = recode(sex, `1` = "male", `2` = "female")) 
+
+litter_data = read_csv("./FAS_litters.csv", col_types = "ccddiiii") %>%
+  janitor::clean_names() %>%
+  select(-pups_survive) %>%
+  mutate(
+    wt_gain = gd18_weight - gd0_weight,
+    group = tolower(group))
+
+fas_data = left_join(pup_data, litter_data, by = "litter_number")
+
+```
+
+
